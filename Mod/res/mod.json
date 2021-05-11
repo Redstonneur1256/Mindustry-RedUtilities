@@ -1,0 +1,10 @@
+{
+  "name": "mindustryredutilities",
+  "displayName": "Mindustry-RedUtilities",
+  "author": "Redstonneur1256",
+  "description": "Various utilities for Mindustry",
+  "main": "fr.redstonneur1256.RedMod",
+  "version": "1.0",
+  "minGameVersion": 126,
+  "hidden": true
+}

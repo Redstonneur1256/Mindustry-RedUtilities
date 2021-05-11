@@ -1,0 +1,39 @@
+
+dependencies {
+    compileOnly "com.github.Anuken.Arc:arc-core:${versions.mindustry}"
+    compileOnly "com.github.Anuken.Mindustry:core:${versions.mindustry}"
+}
+
+shadowJar.archiveFileName = 'Mindustry RedUtilities.jar'
+
+if (devPath != null) {
+    String gamePath
+    if (System.properties['os.name'].toLowerCase().contains('windows')) {
+        gamePath = System.getenv("AppData") + '\\Mindustry\\'
+    } else {
+        gamePath = System.getenv("XDG_DATA_HOME")
+        if (gamePath != null) {
+            if (!gamePath.endsWith('/')) {
+                gamePath += '/'
+            }
+            gamePath += 'Mindustry/'
+        } else {
+            gamePath = "${System.properties['user.home']}/.local/share/Mindustry/"
+        }
+    }
+
+    task buildAndRun {
+        dependsOn(tasks.shadowJar)
+        doLast {
+            Thread.sleep(1000)
+            copy {
+                from "$buildDir/libs/Mindustry RedUtilities.jar"
+                into "$gamePath/mods"
+            }
+            ProcessBuilder builder = new ProcessBuilder()
+            builder.command("java", "-jar", "Mindustry.jar")
+            builder.directory(new File(devPath))
+            builder.start().waitForProcessOutput(System.out, System.err)
+        }
+    }
+}

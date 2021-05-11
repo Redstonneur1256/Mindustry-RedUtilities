@@ -1,0 +1,49 @@
+plugins {
+    id 'java-library'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
+}
+
+group 'fr.redstonneur1256'
+version '1.0'
+
+ext {
+    versions = [:]
+    devPath = System.getenv("DEV_SERVERS")
+}
+versions.mindustry = 'v126.2'
+versions.redutilities = '1.5.2'
+versions.javapoet = '1.13.0'
+
+allprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'com.github.johnrengelman.shadow'
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+
+    dependencies {
+        implementation "com.github.Redstonneur1256:RedUtilities:${versions.redutilities}"
+    }
+
+    jar.archiveFileName = "${project.name}.jar"
+    shadowJar.archiveFileName = jar.archiveFileName
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ['src/']
+            resources.srcDirs = ['res/']
+        }
+        test {
+            java.srcDirs = []
+            resources.srcDirs = []
+        }
+    }
+}
