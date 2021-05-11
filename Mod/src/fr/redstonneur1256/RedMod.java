@@ -115,7 +115,7 @@ public class RedMod extends Mod {
             Vars.constants.put("@category-" + category.name(), category);
         }
 
-        Log.info("Mapped @ content objects in @ms", position.get() == count, Time.timeSinceMillis(start));
+        Log.info("Mapped @ content objects in @ms", position.get(), Time.timeSinceMillis(start));
 
         Settings.register();
     }
