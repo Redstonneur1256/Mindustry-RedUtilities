@@ -1,7 +1,9 @@
 package fr.redstonneur1256.processing.image;
 
 import arc.func.Floatc;
+import arc.graphics.Pixmap;
 import arc.math.geom.Point2;
+import arc.math.geom.Rect;
 import arc.struct.IntMap;
 import arc.struct.IntSeq;
 import arc.struct.Seq;
@@ -10,8 +12,6 @@ import fr.redstonneur1256.redutilities.async.ThreadPool;
 import fr.redstonneur1256.redutilities.async.Threads;
 import fr.redstonneur1256.redutilities.async.pools.ReusableThreadPool;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings("StatementWithEmptyBody")
@@ -26,7 +26,7 @@ public class AsyncImageSimplifier extends ImageSimplifier {
     }
 
     @Override
-    public IntMap<Seq<Rectangle>> simplify(BufferedImage image, Floatc progress) {
+    public IntMap<Seq<Rect>> simplify(Pixmap image, Floatc progress) {
         IntMap<IntSeq> byColors = new IntMap<>();
 
         AtomicInteger value = new AtomicInteger();
@@ -36,11 +36,11 @@ public class AsyncImageSimplifier extends ImageSimplifier {
         int height = image.getHeight();
         for(int x = width - 1; x >= 0; x--) {
             for(int y = height - 1; y >= 0; y--) {
-                byColors.get(image.getRGB(x, y), IntSeq::new).add(Point2.pack(x, y));
+                byColors.get(image.getPixel(x, y), IntSeq::new).add(Point2.pack(x, y));
             }
         }
 
-        IntMap<Task<Seq<Rectangle>>> tasks = new IntMap<>();
+        IntMap<Task<Seq<Rect>>> tasks = new IntMap<>();
 
         boolean[] visited = new boolean[width * height];
 
@@ -48,15 +48,15 @@ public class AsyncImageSimplifier extends ImageSimplifier {
             int color = entry.key;
             IntSeq points = entry.value;
 
-            Seq<Rectangle> rectangles = new Seq<>();
+            Seq<Rect> rectangles = new Seq<>();
 
-            Task<Seq<Rectangle>> task = pool.execute(() -> {
+            Task<Seq<Rect>> task = pool.execute(() -> {
                 while(!points.isEmpty()) {
                     int xy = points.pop();
                     int x = Point2.x(xy);
                     int y = Point2.y(xy);
 
-                    Rectangle rectangle = new Rectangle(x, y, 1, 1);
+                    Rect rectangle = new Rect(x, y, 1, 1);
 
                     while(expand(rectangle, +1, +0, image, color, visited, width)) ;
                     while(expand(rectangle, +0, +1, image, color, visited, width)) ;
@@ -67,7 +67,7 @@ public class AsyncImageSimplifier extends ImageSimplifier {
                         }
                     }
 
-                    int newValue = value.addAndGet(rectangle.width * rectangle.height);
+                    int newValue = value.addAndGet((int) rectangle.width * (int) rectangle.height);
                     progress.get(newValue / max);
 
                     rectangles.add(rectangle);
@@ -79,8 +79,8 @@ public class AsyncImageSimplifier extends ImageSimplifier {
             tasks.put(color, task);
         }
 
-        IntMap<Seq<Rectangle>> simplified = new IntMap<>();
-        for(IntMap.Entry<Task<Seq<Rectangle>>> entry : tasks) {
+        IntMap<Seq<Rect>> simplified = new IntMap<>();
+        for(IntMap.Entry<Task<Seq<Rect>>> entry : tasks) {
             simplified.put(entry.key, entry.value.get());
         }
         return simplified;

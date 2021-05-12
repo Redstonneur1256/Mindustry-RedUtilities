@@ -2,26 +2,25 @@ package fr.redstonneur1256.ui.dialogs;
 
 import arc.Core;
 import arc.files.Fi;
+import arc.graphics.Pixmap;
 import arc.scene.ui.TextField;
 import arc.struct.Seq;
 import arc.util.Strings;
 import arc.util.Time;
 import fr.redstonneur1256.RedMod;
-import fr.redstonneur1256.redutilities.graphics.ImageHelper;
-import fr.redstonneur1256.redutilities.graphics.Palette.Container;
+import fr.redstonneur1256.utils.graphics.Palette.Container;
 import fr.redstonneur1256.ui.RPal;
 import fr.redstonneur1256.ui.base.BasicImageDialog;
+import fr.redstonneur1256.utils.graphics.PixmapHelper;
 import mindustry.gen.Icon;
 import mindustry.type.Item;
 import mindustry.ui.Bar;
 
-import java.awt.image.BufferedImage;
-
 public class SorterGifDialog extends BasicImageDialog {
 
     private RedMod mod;
-    private BufferedImage[] frames;
-    private BufferedImage[] preview;
+    private Pixmap[] frames;
+    private Pixmap[] preview;
     private Seq<Container<Item>[]> items;
     private int delay;
     private float progress;
@@ -107,10 +106,10 @@ public class SorterGifDialog extends BasicImageDialog {
     }
 
     @Override
-    protected void imagesSelected(BufferedImage[] images, int gifDelay, Fi file) {
+    protected void imagesSelected(Pixmap[] images, int gifDelay, Fi file) {
         delay = gifDelay;
         frames = images;
-        preview = new BufferedImage[images.length];
+        preview = new Pixmap[images.length];
         System.arraycopy(images, 0, preview, 0, frames.length);
         width = frames[0].getWidth();
         height = frames[0].getHeight();
@@ -133,7 +132,7 @@ public class SorterGifDialog extends BasicImageDialog {
 
 
             for(int i = 0; i < preview.length; i++) {
-                BufferedImage frame = preview[i];
+                Pixmap frame = preview[i];
                 int count = preview.length;
                 int step = i;
                 items.add(mod.sorterSchematic.buildImage(frame, p -> progress = (p + step) / count));
@@ -176,7 +175,7 @@ public class SorterGifDialog extends BasicImageDialog {
     private void resize() {
         progress = 0;
         for(int i = 0; i < preview.length; i++) {
-            preview[i] = ImageHelper.resize(frames[i], width, height);
+            preview[i] = PixmapHelper.resize(frames[i], width, height);
         }
         Core.app.post(() -> {
             applyImage(preview);

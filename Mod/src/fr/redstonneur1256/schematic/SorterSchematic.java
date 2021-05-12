@@ -1,52 +1,51 @@
 package fr.redstonneur1256.schematic;
 
 import arc.func.Floatc;
+import arc.graphics.Pixmap;
 import arc.struct.Seq;
 import arc.struct.StringMap;
-import fr.redstonneur1256.redutilities.graphics.Palette;
-import fr.redstonneur1256.redutilities.graphics.Palette.Container;
+import fr.redstonneur1256.utils.graphics.Palette;
+import fr.redstonneur1256.utils.graphics.Palette.Container;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.game.Schematic;
 import mindustry.game.Schematic.Stile;
 import mindustry.type.Item;
 
-import java.awt.image.BufferedImage;
-
 public class SorterSchematic {
 
-    private Palette<Palette.Container<Item>> itemsPalette;
+    private Palette<Container<Item>> itemsPalette;
 
     public void init() {
         itemsPalette = new Palette<>();
         //itemsPalette.useCache(true);
 
         for(Item item : Vars.content.items()) {
-            itemsPalette.addColor(new Palette.Container<>(item, item.color.rgb888()));
+            itemsPalette.addColor(new Container<>(item, item.color.rgb888()));
         }
     }
 
-    public void buildAndOpen(BufferedImage image) {
+    public void buildAndOpen(Pixmap image) {
         Schematic schematic = buildSchematic(image);
 
         Vars.schematics.add(schematic);
         Vars.control.input.useSchematic(schematic);
     }
 
-    public BufferedImage createPreview(BufferedImage image) {
+    public Pixmap createPreview(Pixmap image) {
         return createPreview(buildImage(image), image.getWidth(), image.getHeight());
     }
 
-    public BufferedImage createPreview(Container<Item>[] items, int width, int height) {
+    public Pixmap createPreview(Container<Item>[] items, int width, int height) {
         return itemsPalette.toImage(items, width, height);
     }
 
-    public Container<Item>[] buildImage(BufferedImage image) {
+    public Container<Item>[] buildImage(Pixmap image) {
         return buildImage(image, f -> {
         });
     }
 
-    public Container<Item>[] buildImage(BufferedImage image, Floatc progressCons) {
+    public Container<Item>[] buildImage(Pixmap image, Floatc progressCons) {
         @SuppressWarnings("unchecked")
         Container<Item>[] containers = new Container[image.getWidth() * image.getHeight()];
 
@@ -57,7 +56,7 @@ public class SorterSchematic {
 
             for(int y = 0; y < height; y++) {
                 for(int x = 0; x < width; x++) {
-                    containers[x + y * width] = itemsPalette.matchColor(image.getRGB(x, y));
+                    containers[x + y * width] = itemsPalette.matchColor(image.getPixel(x, y) >> 8);
                     progressCons.get((x + y * width) / max);
                 }
             }
@@ -68,7 +67,7 @@ public class SorterSchematic {
         return containers;
     }
 
-    public Schematic buildSchematic(BufferedImage image) {
+    public Schematic buildSchematic(Pixmap image) {
         return buildSchematic(buildImage(image), image.getWidth(), image.getHeight());
     }
 

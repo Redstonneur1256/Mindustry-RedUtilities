@@ -1,19 +1,18 @@
 package fr.redstonneur1256.processing.image;
 
 import arc.func.Floatc;
+import arc.graphics.Pixmap;
 import arc.math.geom.Point2;
+import arc.math.geom.Rect;
 import arc.struct.IntMap;
 import arc.struct.IntSeq;
 import arc.struct.Seq;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-
 @SuppressWarnings("StatementWithEmptyBody")
 public class ImageSimplifier {
 
-    public IntMap<Seq<Rectangle>> simplify(BufferedImage image, Floatc progress) {
-        IntMap<Seq<Rectangle>> map = new IntMap<>();
+    public IntMap<Seq<Rect>> simplify(Pixmap image, Floatc progress) {
+        IntMap<Seq<Rect>> map = new IntMap<>();
 
         int width = image.getWidth();
         int height = image.getHeight();
@@ -28,8 +27,8 @@ public class ImageSimplifier {
                 if(pixels.contains(Point2.pack(x, y))) {
                     continue;
                 }
-                Rectangle rectangle = new Rectangle(x, y, 1, 1);
-                int color = image.getRGB(x, y);
+                Rect rectangle = new Rect(x, y, 1, 1);
+                int color = image.getPixel(x, y);
 
                 while(expand(rectangle, +1, +0, image, color, visited, width)) ;
                 while(expand(rectangle, +0, +1, image, color, visited, width)) ;
@@ -52,22 +51,22 @@ public class ImageSimplifier {
         return 1;
     }
 
-    protected boolean expand(Rectangle rectangle, int dirX, int dirY, BufferedImage image, int color, boolean[] visited, int width) {
+    protected boolean expand(Rect rectangle, int dirX, int dirY, Pixmap image, int color, boolean[] visited, int width) {
 
         if(dirX != 0) {
-            int x = dirX < 0 ? rectangle.x - dirX : rectangle.x + rectangle.width + dirX;
+            int x = (int) (dirX < 0 ? rectangle.x - dirX : rectangle.x + rectangle.width + dirX);
             if(x < 0 || x >= image.getWidth()) {
                 return false;
             }
 
-            int y = rectangle.y;
+            int y = (int) rectangle.y;
             for(int offY = 0; offY < rectangle.height; offY++) {
                 y++;
 
                 if(y < 0 ||
                         y >= image.getHeight() ||
                         visited[x + y * width] ||
-                        image.getRGB(x, y) != color) {
+                        image.getPixel(x, y) != color) {
                     return false;
                 }
             }
@@ -79,21 +78,21 @@ public class ImageSimplifier {
         }
 
         if(dirY != 0) {
-            int y = dirY < 0 ? rectangle.y - dirY : rectangle.y + rectangle.height + dirY;
+            int y = (int) (dirY < 0 ? rectangle.y - dirY : rectangle.y + rectangle.height + dirY);
             if(y < 0 || y >= image.getHeight()) {
                 return false;
             }
 
             int o = y * width;
 
-            int x = rectangle.x;
+            int x = (int) rectangle.x;
             for(int offX = 0; offX < rectangle.width; offX++) {
                 x++;
 
                 if(x < 0 ||
                         x >= image.getWidth() ||
                         visited[x + o] ||
-                        image.getRGB(x, y) != color) {
+                        image.getPixel(x, y) != color) {
                     return false;
                 }
             }

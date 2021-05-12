@@ -2,12 +2,13 @@ package fr.redstonneur1256.ui.dialogs;
 
 import arc.Core;
 import arc.files.Fi;
+import arc.graphics.Pixmap;
 import arc.scene.ui.TextField;
 import arc.util.Strings;
 import arc.util.Time;
 import fr.redstonneur1256.RedMod;
-import fr.redstonneur1256.redutilities.graphics.ImageHelper;
-import fr.redstonneur1256.redutilities.graphics.Palette;
+import fr.redstonneur1256.utils.graphics.PixmapHelper;
+import fr.redstonneur1256.utils.graphics.Palette;
 import fr.redstonneur1256.ui.RPal;
 import fr.redstonneur1256.ui.base.BasicImageDialog;
 import mindustry.game.Schematic;
@@ -15,15 +16,13 @@ import mindustry.gen.Icon;
 import mindustry.type.Item;
 import mindustry.ui.Bar;
 
-import java.awt.image.BufferedImage;
-
 import static mindustry.Vars.*;
 
 public class SorterImageDialog extends BasicImageDialog {
 
     private RedMod mod;
-    private BufferedImage image;
-    private BufferedImage preview;
+    private Pixmap image;
+    private Pixmap preview;
     private Palette.Container<Item>[] items;
     private float progress;
     private int width;
@@ -112,7 +111,7 @@ public class SorterImageDialog extends BasicImageDialog {
     }
 
     @Override
-    protected void imageSelected(BufferedImage image, Fi file) {
+    protected void imageSelected(Pixmap image, Fi file) {
         this.image = image;
         this.width = image.getWidth();
         this.height = image.getHeight();
@@ -134,7 +133,10 @@ public class SorterImageDialog extends BasicImageDialog {
 
     private void resize() {
         progress = 0;
-        image = ImageHelper.resize(image, width, height);
+        Pixmap prevImage = image;
+        image = PixmapHelper.resize(image, width, height);
+        prevImage.dispose();
+
         Core.app.post(() -> applyImage(image));
         mod.pool.execute(this::createPreview);
     }

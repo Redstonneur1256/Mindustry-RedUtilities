@@ -38,7 +38,7 @@ public class RedUI {
 
         Table table = Vars.ui.schematics.buttons;
         table.button("Processor image", Icon.paste, logicImage::show);
-        table.button("Processor GIF", Icon.paste, logicGif::show);
+        //table.button("Processor GIF", Icon.paste, logicGif::show); GIFs are disabled (broken by pixmaps)
         table.button("Sorter image", Icon.paste, sorterImage::show);
         //table.button("Sorter GIF", Icon.paste, sorterGif::show);
         table.button("Map to Schem", Icon.export, MapToSchem::export);

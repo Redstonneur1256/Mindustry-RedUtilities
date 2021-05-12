@@ -2,18 +2,21 @@ package fr.redstonneur1256.ui.dialogs;
 
 import arc.Core;
 import arc.files.Fi;
+import arc.graphics.Pixmap;
 import arc.math.Mathf;
 import arc.math.geom.Point2;
+import arc.math.geom.Rect;
 import arc.struct.IntMap;
 import arc.struct.IntSeq;
 import arc.struct.Seq;
 import arc.struct.StringMap;
 import arc.util.Strings;
+import arc.util.Structs;
 import arc.util.Time;
 import fr.redstonneur1256.RedMod;
 import fr.redstonneur1256.processing.image.ImageSimplifier;
-import fr.redstonneur1256.redutilities.graphics.ImageHelper;
 import fr.redstonneur1256.ui.base.BasicImageDialog;
+import fr.redstonneur1256.utils.graphics.PixmapHelper;
 import fr.redstonneur1256.utils.RUtils;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -22,18 +25,14 @@ import mindustry.gen.Icon;
 import mindustry.world.blocks.logic.LogicBlock;
 import mindustry.world.blocks.logic.LogicBlock.LogicLink;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.util.Comparator;
-
 import static mindustry.game.Schematic.Stile;
 
 public class LogicGifDialog extends BasicImageDialog {
 
     int quality = 40;
     private RedMod mod;
-    private BufferedImage[] originals;
-    private BufferedImage[] frames;
+    private Pixmap[] originals;
+    private Pixmap[] frames;
     private int delay;
     private boolean working;
     private long lastFrame;
@@ -82,9 +81,9 @@ public class LogicGifDialog extends BasicImageDialog {
     }
 
     @Override
-    protected void imagesSelected(BufferedImage[] images, int delay, Fi file) {
+    protected void imagesSelected(Pixmap[] images, int delay, Fi file) {
         this.originals = images;
-        this.frames = new BufferedImage[images.length];
+        this.frames = new Pixmap[images.length];
         this.updateFrames();
 
         setup();
@@ -95,18 +94,27 @@ public class LogicGifDialog extends BasicImageDialog {
             return;
         }
 
+        for(Pixmap frame : frames) {
+            if(frame != null) {
+                frame.dispose();
+            }
+        }
+
         for(int i = 0; i < frames.length; i++) {
-            BufferedImage image = originals[i];
+            Pixmap image = originals[i];
             if(image.getWidth() == image.getHeight()) {
                 // Image is squared no need to calculate ratios
-                frames[i] = ImageHelper.resize(image, quality, quality);
+                frames[i] = PixmapHelper.resize(image, quality, quality);
+                image.dispose();
                 continue;
             }
 
-            BufferedImage copy = new BufferedImage(quality, quality, BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics = copy.createGraphics();
-            graphics.drawImage(RUtils.resizeRatio(image, quality, quality), 0, 0, null);
-            graphics.dispose();
+            Pixmap copy = new Pixmap(quality, quality, Pixmap.Format.rgba8888);
+
+            Pixmap resized = RUtils.resizeRatio(image, quality, quality);
+            copy.drawPixmap(resized, 0, 0);
+            resized.dispose();
+
             frames[i] = copy;
         }
 
@@ -130,15 +138,15 @@ public class LogicGifDialog extends BasicImageDialog {
         Seq<IntMap<IntSeq>> changedFrames = new Seq<>();
 
         for(int i = 0; i < frames.length; i++) {
-            BufferedImage prev = frames[i == 0 ? frames.length - i - 1 : i - 1];
-            BufferedImage next = frames[i];
+            Pixmap prev = frames[i == 0 ? frames.length - i - 1 : i - 1];
+            Pixmap next = frames[i];
 
             IntMap<IntSeq> points = new IntMap<>();
 
             for(int x = 0; x < prev.getWidth(); x++) {
                 for(int y = 0; y < prev.getHeight(); y++) {
-                    int prevRGB = prev.getRGB(x, y);
-                    int nextRGB = next.getRGB(x, y);
+                    int prevRGB = prev.getPixel(x, y);
+                    int nextRGB = next.getPixel(x, y);
 
                     if(prevRGB != nextRGB) {
                         points.get(nextRGB, IntSeq::new).add(Point2.pack(x, y));
@@ -172,11 +180,11 @@ public class LogicGifDialog extends BasicImageDialog {
 
         int scale = Mathf.ceil(176F / quality);
 
-        IntMap<Seq<Rectangle>> firstFrame = new ImageSimplifier().simplify(frames[0], p -> {
+        IntMap<Seq<Rect>> firstFrame = new ImageSimplifier().simplify(frames[0], p -> {
         });
-        for(IntMap.Entry<Seq<Rectangle>> colorGroup : firstFrame) {
+        for(IntMap.Entry<Seq<Rect>> colorGroup : firstFrame) {
             int color = colorGroup.key;
-            Seq<Rectangle> areas = colorGroup.value;
+            Seq<Rect> areas = colorGroup.value;
 
             int r = color >> 16 & 0xFF;
             int g = color >> 8 & 0xFF;
@@ -186,11 +194,11 @@ public class LogicGifDialog extends BasicImageDialog {
             boolean justFound = false;
 
             while(!areas.isEmpty()) {
-                Rectangle area = areas.pop();
+                Rect area = areas.pop();
 
                 if(bestBuilder == null) {
                     // Find the code builder with the less amount of lines
-                    bestBuilder = codeBuilders.min(Comparator.comparingInt(builder -> builder.lines));
+                    bestBuilder = codeBuilders.min(Structs.comparingInt(builder -> builder.lines));
                     justFound = true;
                 }
 
@@ -208,7 +216,7 @@ public class LogicGifDialog extends BasicImageDialog {
                     justFound = false;
                 }
 
-                bestBuilder.appendLine("draw rect " + area.x * scale + " " + (176 - area.y * scale) + " " + area.width * scale + " " + area.height * scale + " 0 0");
+                bestBuilder.appendLine("draw rect " + (int) area.x * scale + " " + (176 - (int) area.y * scale) + " " + (int) area.width * scale + " " + (int) area.height * scale + " 0 0");
                 bestBuilder.operations++;
 
                 if(bestBuilder.operations >= 50) {
@@ -225,7 +233,7 @@ public class LogicGifDialog extends BasicImageDialog {
             IntMap<IntSeq> framePixels = changedFrames.get(frame);
 
             for(IntMap.Entry<IntSeq> color : framePixels) {
-                CodeBuilder best = codeBuilders.min(Comparator.comparingInt(a -> a.builder.length()));
+                CodeBuilder best = codeBuilders.min(Structs.comparingInt(a -> a.builder.length()));
 
                 StringBuilder builder = best.builder;
 

@@ -2,21 +2,24 @@ package fr.redstonneur1256.ui.dialogs;
 
 import arc.Core;
 import arc.files.Fi;
+import arc.graphics.Pixmap;
 import arc.math.Mathf;
 import arc.math.geom.Point2;
+import arc.math.geom.Rect;
 import arc.scene.style.TextureRegionDrawable;
 import arc.struct.IntMap;
 import arc.struct.IntSeq;
 import arc.struct.Seq;
 import arc.struct.StringMap;
 import arc.util.Strings;
+import arc.util.Structs;
 import arc.util.Time;
 import fr.redstonneur1256.RedMod;
 import fr.redstonneur1256.processing.image.AsyncImageSimplifier;
 import fr.redstonneur1256.processing.image.ImageSimplifier;
-import fr.redstonneur1256.redutilities.graphics.ImageHelper;
 import fr.redstonneur1256.ui.RPal;
 import fr.redstonneur1256.ui.base.BasicImageDialog;
+import fr.redstonneur1256.utils.graphics.PixmapHelper;
 import fr.redstonneur1256.utils.RUtils;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -28,10 +31,6 @@ import mindustry.ui.Cicon;
 import mindustry.world.blocks.logic.LogicBlock;
 import mindustry.world.blocks.logic.LogicDisplay;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.util.Comparator;
-
 public class LogicImageDialog extends BasicImageDialog {
 
     private RedMod mod;
@@ -40,8 +39,8 @@ public class LogicImageDialog extends BasicImageDialog {
     private boolean keepRatios;
     private String name;
     private float speed;
-    private BufferedImage image;
-    private BufferedImage used;
+    private Pixmap image;
+    private Pixmap used;
     private String operation;
     private float globalProgress;
     private float operationProgress;
@@ -54,9 +53,8 @@ public class LogicImageDialog extends BasicImageDialog {
         this.displays = Vars.content
                 .blocks()
                 .select(block -> block instanceof LogicDisplay)
-                //.filter(display -> !display.localizedName.contains("orderless")) // Remove those bugged "borderless" display
                 .map(block -> (LogicDisplay) block);
-        this.display = displays.max(Comparator.comparingInt(display -> display.displaySize));
+        this.display = displays.max(Structs.comparingInt(display -> display.displaySize));
         this.keepRatios = true;
         this.name = "!!! Name Me";
         this.speed = 1;
@@ -123,7 +121,7 @@ public class LogicImageDialog extends BasicImageDialog {
     }
 
     @Override
-    protected void imageSelected(BufferedImage image, Fi file) {
+    protected void imageSelected(Pixmap image, Fi file) {
         this.name = file.nameWithoutExtension();
         this.image = image;
         this.prepareImage();
@@ -138,17 +136,18 @@ public class LogicImageDialog extends BasicImageDialog {
         }
 
         if(!keepRatios) {
-            used = ImageHelper.resize(image, size, size);
-        }else if(image.getWidth() != size || image.getHeight() != size) {
-            BufferedImage scaled = RUtils.resizeRatio(image, size, size);
-
-            used = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
-
-            Graphics2D graphics = used.createGraphics();
-            graphics.drawImage(scaled, 0, 0, null);
-            graphics.dispose();
+            used = PixmapHelper.resize(image, size, size);
         }else {
-            used = image;
+            Pixmap scaled = RUtils.resizeRatio(image, size, size);
+
+            if(used != null) {
+                used.dispose();
+            }
+
+            used = new Pixmap(size, size, Pixmap.Format.rgba8888);
+
+            used.drawPixmap(scaled, 0, 0);
+            scaled.dispose();
         }
 
         applyImage(used);
@@ -158,7 +157,7 @@ public class LogicImageDialog extends BasicImageDialog {
         operation = "Preparing";
         globalProgress = 0;
 
-        BufferedImage image = used;
+        Pixmap image = used;
 
         operation = "Simplifying";
         globalProgress = 0.2F;
@@ -166,7 +165,7 @@ public class LogicImageDialog extends BasicImageDialog {
         ImageSimplifier simplifier = async ? new AsyncImageSimplifier() : new ImageSimplifier();
 
         long start = Time.nanos();
-        IntMap<Seq<Rectangle>> simplified = simplifier.simplify(image, p -> {
+        IntMap<Seq<Rect>> simplified = simplifier.simplify(image, p -> {
             globalProgress = 0.2F + p * 0.2F;
             operationProgress = p;
         });
@@ -184,9 +183,9 @@ public class LogicImageDialog extends BasicImageDialog {
         operation = "Building code";
         globalProgress = 0.4F;
 
-        for(IntMap.Entry<Seq<Rectangle>> entry : simplified) {
+        for(IntMap.Entry<Seq<Rect>> entry : simplified) {
             int color = entry.key;
-            Seq<Rectangle> rectangles = entry.value;
+            Seq<Rect> rectangles = entry.value;
 
             int r = color >> 16 & 0xFF;
             int g = color >> 8 & 0xFF;
@@ -197,9 +196,9 @@ public class LogicImageDialog extends BasicImageDialog {
                 drawCount++;
 
                 while(!rectangles.isEmpty() && current.size <= speed) {
-                    Rectangle rect = rectangles.pop();
+                    Rect rect = rectangles.pop();
 
-                    current.add("draw rect " + rect.x + " " + (image.getHeight() - rect.y - rect.height) + " " + rect.width + " " + rect.height + " _ _");
+                    current.add("draw rect " + (int) rect.x + " " + (image.getHeight() - (int) rect.y - (int) rect.height) + " " + (int) rect.width + " " + (int) rect.height + " _ _");
                     drawCount++;
 
                     if(drawCount >= 128) {

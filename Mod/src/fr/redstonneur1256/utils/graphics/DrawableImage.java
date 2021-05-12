@@ -1,4 +1,4 @@
-package fr.redstonneur1256.utils;
+package fr.redstonneur1256.utils.graphics;
 
 import arc.graphics.Pixmap;
 import arc.graphics.Texture;
@@ -6,8 +6,7 @@ import arc.graphics.g2d.TextureRegion;
 import arc.scene.style.TextureRegionDrawable;
 import arc.scene.ui.layout.Cell;
 import arc.scene.ui.layout.Table;
-
-import java.awt.image.BufferedImage;
+import fr.redstonneur1256.utils.RUtils;
 
 import static arc.graphics.Pixmap.Format;
 
@@ -15,8 +14,7 @@ public class DrawableImage {
 
     private int width;
     private int height;
-    private BufferedImage[] images;
-    private Pixmap[] pixmaps;
+    private Pixmap[] images;
     private Texture[] textures;
     private TextureRegionDrawable[] drawables;
     private Table table;
@@ -28,18 +26,8 @@ public class DrawableImage {
         height = 1;
     }
 
-    public static void drawPixMap(BufferedImage image, Pixmap pixmap) {
-        for(int x = 0; x < pixmap.getWidth(); x++) {
-            for(int y = 0; y < pixmap.getHeight(); y++) {
-                int argb = image.getRGB(x, y);
-                int rgba = ((argb & 0xFFFFFF) << 8) | ((argb >> 24) & 0xFF);
-                pixmap.draw(x, y, rgba);
-            }
-        }
-    }
-
     public DrawableImage setMaxSize(int maxWidth, int maxHeight) {
-        BufferedImage image = images[0];
+        Pixmap image = images[0];
         if(image.getWidth() > maxWidth || image.getHeight() > maxHeight) {
             double widthRatio = (double) maxWidth / image.getWidth();
             double heightRatio = (double) maxHeight / image.getHeight();
@@ -60,19 +48,19 @@ public class DrawableImage {
         return updateImages();
     }
 
-    public DrawableImage set(BufferedImage image, BufferedImage... images) {
-        BufferedImage[] copy = new BufferedImage[images.length + 1];
+    public DrawableImage set(Pixmap image, Pixmap... images) {
+        Pixmap[] copy = new Pixmap[images.length + 1];
         copy[0] = image;
         System.arraycopy(images, 0, copy, 1, images.length);
         return set(image.getWidth(), image.getHeight(), copy);
     }
 
-    public DrawableImage set(BufferedImage[] images) {
+    public DrawableImage set(Pixmap[] images) {
         this.images = images;
         return updateImages();
     }
 
-    public DrawableImage set(int maxWidth, int maxHeight, BufferedImage... images) {
+    public DrawableImage set(int maxWidth, int maxHeight, Pixmap... images) {
         this.images = images;
         return setMaxSize(maxWidth, maxHeight);
     }
@@ -84,12 +72,6 @@ public class DrawableImage {
             }
             textures = null;
         }
-        if(pixmaps != null) {
-            for(Pixmap pixmap : pixmaps) {
-                pixmap.dispose();
-            }
-            pixmaps = null;
-        }
         drawables = null;
 
         return this;
@@ -99,24 +81,21 @@ public class DrawableImage {
         dispose();
         int count = images.length;
 
-        this.pixmaps = new Pixmap[count];
         this.textures = new Texture[count];
         this.drawables = new TextureRegionDrawable[count];
 
         for(int i = 0; i < count; i++) {
-            BufferedImage image = images[i];
+            Pixmap image = images[i];
 
             if(image.getWidth() != width || image.getHeight() != height) {
+                Pixmap prevImage = image;
                 image = images[i] = RUtils.resizeRatio(image, width, height);
+                prevImage.dispose();
             }
 
-            Pixmap pixmap = new Pixmap(image.getWidth(), image.getHeight(), Format.rgba8888);
-            drawPixMap(image, pixmap);
-
-            Texture texture = new Texture(pixmap);
+            Texture texture = new Texture(image);
             TextureRegionDrawable drawable = new TextureRegionDrawable(new TextureRegion(texture));
 
-            pixmaps[i] = pixmap;
             textures[i] = texture;
             drawables[i] = drawable;
         }
@@ -158,14 +137,10 @@ public class DrawableImage {
     }
 
     public Pixmap[] getPixmaps() {
-        return pixmaps;
+        return images;
     }
 
     public void reload() {
-        for(int i = 0; i < images.length; i++) {
-            drawPixMap(images[i], pixmaps[i]);
-        }
-
         for(Texture texture : textures) {
             texture.load(texture.getTextureData());
         }

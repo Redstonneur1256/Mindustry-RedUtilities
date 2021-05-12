@@ -1,8 +1,8 @@
 package com.fmsware;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
+import arc.graphics.Pixmap;
+import arc.math.geom.Rect;
+
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -18,7 +18,7 @@ import java.util.ArrayList;
  *    d.read("sample.gif");
  *    int n = d.getFrameCount();
  *    for (int i = 0; i < n; i++) {
- *       BufferedImage frame = d.getFrame(i);  // frame i
+ *       Pixmap frame = d.getFrame(i);  // frame i
  *       int t = d.getDelay(i);  // display duration of frame in milliseconds
  *       // do something with frame
  *    }
@@ -66,9 +66,9 @@ public class GifDecoder {
     protected boolean interlace; // interlace flag
     protected int lctSize; // local color table size
     protected int ix, iy, iw, ih; // current image rectangle
-    protected Rectangle lastRect; // last image rect
-    protected BufferedImage image; // current frame
-    protected BufferedImage lastImage; // previous frame
+    protected Rect lastRect; // last image rect
+    protected Pixmap image; // current frame
+    protected Pixmap lastImage; // previous frame
     protected byte[] block = new byte[256]; // current data block
     protected int blockSize = 0; // block size
     // last graphic control extension info
@@ -115,9 +115,9 @@ public class GifDecoder {
     /**
      * Gets the first (or only) image read.
      *
-     * @return BufferedImage containing first frame, or null if none.
+     * @return Pixmap containing first frame, or null if none.
      */
-    public BufferedImage getImage() {
+    public Pixmap getImage() {
         return getFrame(0);
     }
 
@@ -137,8 +137,6 @@ public class GifDecoder {
      */
     protected void setPixels() {
         // expose destination image's pixels as int array
-        int[] dest =
-                ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
         // fill in starting image contents based on last image's dispose code
         if(lastDispose > 0) {
@@ -153,24 +151,17 @@ public class GifDecoder {
             }
 
             if(lastImage != null) {
-                int[] prev =
-                        ((DataBufferInt) lastImage.getRaster().getDataBuffer()).getData();
-                System.arraycopy(prev, 0, dest, 0, width * height);
+                image.drawPixmap(lastImage);
                 // copy pixels
 
                 if(lastDispose == 2) {
                     // fill last image rect area with background color
-                    Graphics2D g = image.createGraphics();
-                    Color c;
                     if(transparency) {
-                        c = new Color(0, 0, 0, 0);    // assume background is transparent
+                        image.setColor(0, 0, 0, 0);
                     }else {
-                        c = new Color(lastBgColor); // use given background color
+                        image.setColor((lastBgColor & 0xFFFFFF) << 8 | (lastBgColor & 0xFF000000) >> 24);
                     }
-                    g.setColor(c);
-                    g.setComposite(AlphaComposite.Src); // replace area
-                    g.fill(lastRect);
-                    g.dispose();
+                    image.fillRectangle((int) lastRect.x, (int) lastRect.y, (int) lastRect.width, (int) lastRect.height);
                 }
             }
         }
@@ -214,7 +205,9 @@ public class GifDecoder {
                     int index = ((int) pixels[sx++]) & 0xff;
                     int c = act[index];
                     if(c != 0) {
-                        dest[dx] = c;
+                        int x = dx % width;
+                        int y = dx / width;
+                        image.draw(x, y, (c & 0xFFFFFF) << 8 | (c & 0xFF000000) >> 24);
                     }
                     dx++;
                 }
@@ -225,23 +218,14 @@ public class GifDecoder {
     /**
      * Gets the image contents of frame n.
      *
-     * @return BufferedImage representation of frame, or null if n is invalid.
+     * @return Pixmap representation of frame, or null if n is invalid.
      */
-    public BufferedImage getFrame(int n) {
-        BufferedImage im = null;
+    public Pixmap getFrame(int n) {
+        Pixmap im = null;
         if((n >= 0) && (n < frameCount)) {
             im = frames.get(n).image;
         }
         return im;
-    }
-
-    /**
-     * Gets image size.
-     *
-     * @return GIF image dimensions
-     */
-    public Dimension getFrameSize() {
-        return new Dimension(width, height);
     }
 
     /**
@@ -678,8 +662,7 @@ public class GifDecoder {
         frameCount++;
 
         // create new image to receive frame data
-        image =
-                new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE);
+        image = new Pixmap(width, height, Pixmap.Format.rgba8888);
 
         setPixels(); // transfer pixel data to image
 
@@ -740,7 +723,7 @@ public class GifDecoder {
      */
     protected void resetFrame() {
         lastDispose = dispose;
-        lastRect = new Rectangle(ix, iy, iw, ih);
+        lastRect = new Rect(ix, iy, iw, ih);
         lastImage = image;
         lastBgColor = bgColor;
         lct = null;
@@ -757,9 +740,9 @@ public class GifDecoder {
     }
 
     static class GifFrame {
-        public BufferedImage image;
+        public Pixmap image;
         public int delay;
-        public GifFrame(BufferedImage im, int del) {
+        public GifFrame(Pixmap im, int del) {
             image = im;
             delay = del;
         }
